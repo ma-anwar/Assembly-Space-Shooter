@@ -15,7 +15,9 @@
 .eqv blue 0x0000ff
 .eqv objectColor 0x01ff22
 .eqv playerStart 1792
-
+.eqv firstStart 0x10008120
+.eqv secondStart  0x10009408
+.eqv thirdStart 0x10010688
 .macro print (%x)
 	li $v0, 1
 	add $a0, $zero, %x
@@ -36,24 +38,26 @@ playerLocation: .word 0x10008000
 #8: Reset Flag 
 #12: Previous Location
 #16: Collision Flag
-objectFirst: .word 0x10008120,0,0,0,0
-objectSecond: .word 0x10009408,11,0,0, 0 
-objectThird: .word 0x10010688, 21, 0, 0,0
-saveLocation: .word
+objectFirst: .word 0:5
+objectSecond: .word 0:5
+objectThird: .word 0:5
+
 
 
 
 
 .text
+init:
 # INITIALIZE GAME STATE
- # Paint screen block
+ # Paint screen black
   li $t0, BASE_ADDRESS 
   move $a0, $t0
   li $a1, 32
   li $a2, 32
   jal paintBlack
-  # initializ player start location
-  li $t0, BASE_ADDRESS # $t0 stores the base address for display1
+
+  # initialize player start location
+  li $t0, BASE_ADDRESS 
   addi $t1, $t0, playerStart
   la $t2, playerLocation
   sw $t1, 0($t2)
@@ -63,16 +67,38 @@ saveLocation: .word
   la $a1, player
   jal drawImage
 
-  # Initialize object location
- # la $t0, objectFirst
-  
- # li $t2, BASE_ADDRESS
-  #addi $t1, $t2,  120
-  
-  
-  #sw $t1, 0($t0)
-  #print ($t1)
-  #print ($0)
+  # Initialize first object location
+  la $t0, objectFirst
+  li $t1, firstStart
+  sw $t1, 0($t0)
+
+  # Initialized second obstacle
+  la $t0, objectSecond
+  li $t1, secondStart
+  sw $t1, 0($t0)
+  li $t1, 11
+  sw $t1, 4($t0 )
+  # Initialized third obstacle
+  la $t0, objectThird
+  li $t1, thirdStart
+  sw $t1, 0($t0)
+  li $t1, 21
+  sw $t1, 4($t0 )
+
+  # Initialize player colors
+  la $t0, player
+  li $t1, blue
+  sw $t1, 4($t0)
+  sw $t1, 8($t0)
+  sw $t1, 12($t0)
+  sw $t1, 28($t0)
+  sw $t1, 32($t0)
+  li $t1, green
+  sw $t1, 0($t0)
+  sw $t1, 16($t0)
+  sw $t1, 20($t0)
+  sw $t1, 24($t0)
+
   
 
 main:
@@ -114,7 +140,7 @@ keypress:
   beq $s2, 0x77, respondW        # 
   beq $s2, 0x64, respondD
   beq $s2, 0x73, respondS
- # beq $t2, 0x70, respondP
+  beq $s2, 0x70, respondP
  j afterPress
 
 # RESPONSES TO KEYS
@@ -195,6 +221,8 @@ respondS:
   
   j afterPress    # finished handling it
 respondP:
+  j init
+
 # END PROGRAM
 exit:
   li $v0, 10 # terminate the program gracefully
