@@ -571,9 +571,18 @@ handleCollision:
   lw $t1, 32($t0) 
   addi $t3, $t0, 32
   beq $t1, $t2, removeShield
-  j afterCollision
+  j gameOver
   removeShield:
   li $t0, black
   sw $t0, 0($t3)
   sw $0, 16($a0)
   j afterCollision
+
+gameOver:
+  li $t0, BASE_ADDRESS 
+  move $a0, $t0
+  li $a1, 32
+  li $a2, 32
+  jal paintBlack
+  j exit
+
