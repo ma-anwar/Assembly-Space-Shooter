@@ -59,14 +59,10 @@ objectThird: .word 0:4
 
   # Initialize object location
   la $t0, objectFirst
-  
-  li $t2, BASE_ADDRESS
-  addi $t1, $t2,  120
-  
-  
+  lw $t1, 0($t0)
+  addi $t1, $t1,  120
+  addi $t1, $t1,  BASE_ADDRESS
   sw $t1, 0($t0)
-  print ($t1)
-  print ($0)
   
 
 main:
@@ -420,19 +416,12 @@ erasePlayer:
 moveandCollide:
 #a0 object to update
 #a1 object bound
-  lw $t1, 0($a0)
-  addi $t2, $0, BASE_ADDRESS    # subtract base address from player location
-  sub $t1, $t1, $t2  
-  li $t3, 128
-  div $t1, $t3
-  mfhi $t1
-  beq $t1, $0, resetToStart
 
   lw $t0, 0($a0)
+#TODO END CHECK
   addi $t1, $t0, -4
   sw $t1, 0($a0)
 
-  resetToStart:
   jr $ra
 
 drawObject:
@@ -444,5 +433,4 @@ drawObject:
   li $t0, black
   sw $t0, 8($t1)
   sw $t0, 136($t1)
-
   jr $ra
