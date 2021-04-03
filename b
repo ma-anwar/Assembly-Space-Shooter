@@ -30,15 +30,10 @@ green, blue, blue
 
 
 playerLocation: .word 0x10008000
-# Obstacle Object: 
-#0: Location 
-#4: Minimum Row 
-#8: Reset Flag 
-#12: Previous Location
-#16: Collision Flag
-objectFirst: .word 0x10008120,0,0,0,0
-objectSecond: .word 0x10009408,11,0,0, 0 
-objectThird: .word 0x10010688, 21, 0, 0,0
+
+objectFirst: .word 0,0,0,0
+objectSecond: .word 0:4
+objectThird: .word 0:4
 saveLocation: .word
 
 
@@ -64,15 +59,15 @@ saveLocation: .word
   jal drawImage
 
   # Initialize object location
- # la $t0, objectFirst
+  la $t0, objectFirst
   
- # li $t2, BASE_ADDRESS
-  #addi $t1, $t2,  120
+  li $t2, BASE_ADDRESS
+  addi $t1, $t2,  120
   
   
-  #sw $t1, 0($t0)
-  #print ($t1)
-  #print ($0)
+  sw $t1, 0($t0)
+  print ($t1)
+  print ($0)
   
 
 main:
@@ -81,25 +76,11 @@ main:
   lw $s6, 0($s7)
   beq $s6, 1, keypress
 afterPress:
-    # Calculate Obstacle Locations
-  la $a0, objectFirst
-  jal moveandCollide
-  la $a0, objectSecond
-  jal moveandCollide
-  la $a0, objectThird
-  jal moveandCollide
-      # Draw Obstacles
-  la $a0, objectFirst
-  jal drawObject  
-  la $a0, objectSecond
-  jal drawObject  
-  la $a0, objectThird
-  jal drawObject
-  
-  lw $a0, playerLocation
-  la $a1, player
-  jal drawImage
 
+  la $a0, objectFirst
+  jal moveandCollide
+  la $a0, objectFirst
+  jal drawObject
   li $v0, 32     # sleep
   li $a0, 20
   syscall
@@ -405,7 +386,7 @@ beginFill:
   move $a2, $t2    # restore horizontal
   add $a0, $a0, $t1    # mov to next row
   addi $a1, $a1, -1     # subtract one from vertical
-  j beginFill
+  j beginFill1
 donePainting:
   jr $ra
 
@@ -440,7 +421,6 @@ erasePlayer:
 moveandCollide:
 #a0 object to update
 #a1 object bound
-    # CHECK IF WE ARE AT THE LEFT MOST BOUND
   lw $t1, 0($a0)
   addi $t2, $0, BASE_ADDRESS    # subtract base address from player location
   sub $t1, $t1, $t2  
@@ -448,32 +428,15 @@ moveandCollide:
   div $t1, $t3
   mfhi $t1
   beq $t1, $0, resetToStart
-# CHECK COLLISION
-  lw $t0, 0($a0)
-  addi $t0, $t0, -4
-  lw $t1, 0($t0)
-  li $t2, black
-  bne $t1, $t2, collision 
-  lw $t1, 128($t0)
-  bne $t1, $t2, collision
-# MOVE PLAYER
+
   lw $t0, 0($a0)
   addi $t1, $t0, -4
   sw $t1, 0($a0)
   jr $ra
-  collision:
-  li $t0, 1 
-  sw $t0, 16($a0) 
-  
 
   resetToStart:
-  li $t0, 1
-  sw $t0, 8($a0)    # set reset flag to one
-  lw $t0, 0($a0)
-  sw $t0, 12($a0)    # save previous location
   move $t0, $a0
-  
-  move $a0,  $0    # generate random number between zero and ten
+  lw $a0,  0    # generate random number between zero and ten
   li $a1, 10
   li $v0, 42
   syscall
@@ -483,7 +446,6 @@ moveandCollide:
   mult $t1, $t2     # calculate row
   mflo $t1
   addi $t1, $t1, 120
-  addi $t1, $t1, BASE_ADDRESS
   sw $t1, 0($t0)
 
 
@@ -491,18 +453,6 @@ moveandCollide:
 
 drawObject:
 #a0 object to draw
-  # Check for reset
-  lw $t2, 8($a0)
-  bgt $t2, $0, erasePrevious
-  afterErase:
-
-  # Check for previous collision
-  lw $t2, 16($a0)
-  
-  bgt $t2, $0, handleCollision
-  afterCollision:
-
-  #Draw obstacle
   li $t0, objectColor
   lw $t1, 0($a0)
   sw $t0, 0($t1)
@@ -512,40 +462,3 @@ drawObject:
   sw $t0, 136($t1)
 
   jr $ra
- 
- erasePrevious:
-  lw $t2, 12($a0)
-  li $t0, black
-  sw $t0, 0($t2)
-  sw $t0, 4($t2)
-  sw $t0, 128($t2)
-  sw $t0, 132($t2)
-  li $t0, 0    # Reset erase flag
-  lw $t0, 8($a0)
-  j afterErase
-handleCollision:
-  la $t0, player
-  li $t2, blue
-
-  lw $t1, 4($t0) 
-  addi $t3,$t0, 4
-  
-  beq $t1, $t2, removeShield
-  lw $t1, 8($t0) 
-  addi $t3, $t0, 8
-  beq $t1, $t2, removeShield
-  lw $t1, 12($t0) 
-  addi $t3,$t0, 12
-  beq $t1, $t2, removeShield
-  lw $t1, 28($t0) 
-  addi $t3, $t0, 28
-  beq $t1, $t2, removeShield
-  lw $t1, 32($t0) 
-  addi $t3, $t0, 32
-  beq $t1, $t2, removeShield
-  j afterCollision
-  removeShield:
-  li $t0, black
-  sw $t0, 0($t3)
-  sw $0, 16($a0)
-  j afterCollision
