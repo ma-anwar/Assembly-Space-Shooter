@@ -18,6 +18,11 @@
 .eqv firstStart 0x10008120
 .eqv secondStart  0x10009408
 .eqv thirdStart 0x10010688
+.eqv goodStart 0x10008120
+.eqv badStart 0x10008000
+.eqv goodColor 0xffc0cb
+.eqv badColor 0xff0000
+
 .macro print (%x)
 	li $v0, 1
 	add $a0, $zero, %x
@@ -41,7 +46,13 @@ playerLocation: .word 0x10008000
 objectFirst: .word 0:5
 objectSecond: .word 0:5
 objectThird: .word 0:5
-
+# Pickup Object:
+#0: Location
+#4:
+#8: Collision Flag
+#12: Color
+pickGood: .word 0:4
+pickBad: .word 0:4
 
 
 
@@ -55,6 +66,20 @@ init:
   li $a1, 32
   li $a2, 32
   jal paintBlack
+
+  # Initialize player colors
+  la $t0, player
+  li $t1, blue
+  sw $t1, 4($t0)
+  sw $t1, 8($t0)
+  sw $t1, 12($t0)
+  sw $t1, 28($t0)
+  sw $t1, 32($t0)
+  li $t1, green
+  sw $t1, 0($t0)
+  sw $t1, 16($t0)
+  sw $t1, 20($t0)
+  sw $t1, 24($t0)
 
   # initialize player start location
   li $t0, BASE_ADDRESS 
@@ -78,28 +103,31 @@ init:
   sw $t1, 0($t0)
   li $t1, 11
   sw $t1, 4($t0 )
-  # Initialized third obstacle
+  # Initialize third obstacle
   la $t0, objectThird
   li $t1, thirdStart
   sw $t1, 0($t0)
   li $t1, 21
   sw $t1, 4($t0 )
 
-  # Initialize player colors
-  la $t0, player
-  li $t1, blue
-  sw $t1, 4($t0)
-  sw $t1, 8($t0)
-  sw $t1, 12($t0)
-  sw $t1, 28($t0)
-  sw $t1, 32($t0)
-  li $t1, green
-  sw $t1, 0($t0)
-  sw $t1, 16($t0)
-  sw $t1, 20($t0)
-  sw $t1, 24($t0)
 
-  
+
+  # Initialize Pickup
+  la $t0, pickGood
+  li $t1, goodStart
+  sw $t1, 0($t0)
+  li $t1, 116
+  sw $t1, 4($t0)
+  li $t1, goodColor
+  sw $t1, 12($t0)
+    # Initialize bad Pickup
+  la $t0, pickBad
+  li $t1, badStart
+  sw $t1, 0($t0)
+  li $t1, 12
+  sw $t1, 4($t0)
+  li $t1, badColor
+  sw $t1, 12($t0)
 
 main:
   #get movement
@@ -126,8 +154,21 @@ afterPress:
   la $a1, player
   jal drawImage
 
+  la $a0, pickGood
+  jal checkPick
+  la $a0, pickBad
+  jal checkPick
+
+  jal checkGood
+  jal checkBad
+
+  la $a0, pickGood
+  jal drawPick
+  la $a0, pickBad
+  jal drawPick
+  
   li $v0, 32     # sleep
-  li $a0, 20
+  li $a0, 40
   syscall
   j main
 
@@ -481,10 +522,18 @@ moveandCollide:
   addi $t0, $t0, -4
   lw $t1, 0($t0)
   li $t2, black
+  li $t3, goodColor
+  li $t4, badColor
+  beq $t1, $t3, checkSecond
+  beq $t1, $t4, checkSecond
   bne $t1, $t2, collision 
+  checkSecond:
   lw $t1, 128($t0)
+  beq $t1, $t3, moveObject
+  beq $t1, $t4, moveObject
   bne $t1, $t2, collision
-# MOVE PLAYER
+# MOVE OBJECT
+moveObject:
   lw $t0, 0($a0)
   addi $t1, $t0, -4
   sw $t1, 0($a0)
@@ -572,6 +621,7 @@ handleCollision:
   addi $t3, $t0, 32
   beq $t1, $t2, removeShield
   j gameOver
+  j afterCollision
   removeShield:
   li $t0, black
   sw $t0, 0($t3)
@@ -586,3 +636,111 @@ gameOver:
   jal paintBlack
   j exit
 
+checkPick:
+  #$a0 pick up object
+  lw $t0, 0($a0)
+  lw $t1, playerLocation
+  sub $t2, $t0, $t1
+  li $t3, 0
+  beq $t2, $t3, pickConfirm
+  li $t3, 4
+  beq $t2, $t3, pickConfirm
+  li $t3, 8
+  beq $t2, $t3, pickConfirm
+  li $t3, 128
+  beq $t2, $t3, pickConfirm
+  li $t3, 132
+  beq $t2, $t3, pickConfirm
+  li $t3, 136
+  beq $t2, $t3, pickConfirm
+  li $t3, 256
+  beq $t2, $t3, pickConfirm
+  li $t3, 260
+  beq $t2, $t3, pickConfirm
+  li $t3, 264
+  beq $t2, $t3, pickConfirm
+  jr $ra
+pickConfirm:
+  li $t0, 1
+  sw $t0, 8($a0)
+  jr $ra
+
+checkGood:
+  la $t0, pickGood
+  lw $t1, 8($t0)
+  beq $t1, $0, returnCheck
+  sw $0, 8($t0)
+
+  li $a1, 31
+  li $v0, 42
+  syscall
+  li $t1, 128     # constant to calculate rone number
+  
+  
+  mult $t1, $a0     # calculate row
+  mflo $t1
+  addi $t1, $t1, 80
+  addi $t1, $t1, BASE_ADDRESS
+  sw $t1, 0($t0)
+  # check for empty shield and replace with blue shield
+  la $t0, player
+  li $t2, black
+
+  lw $t1, 4($t0) 
+  addi $t3,$t0, 4
+  beq $t1, $t2, addShield
+  lw $t1, 8($t0) 
+  addi $t3, $t0, 8
+  beq $t1, $t2, addShield
+  lw $t1, 12($t0) 
+  addi $t3,$t0, 12
+  beq $t1, $t2, addShield
+  lw $t1, 28($t0) 
+  addi $t3, $t0, 28
+  beq $t1, $t2, addShield
+  lw $t1, 32($t0) 
+  addi $t3, $t0, 32
+  beq $t1, $t2, addShield
+  j returnCheck
+
+  addShield:
+  li $t0, blue
+  sw $t0, 0($t3)
+
+  returnCheck:
+  jr $ra
+
+drawPick:
+  lw $t0, 12($a0)
+  lw $t1, 0($a0) 
+  sw $t0, 0($t1)
+  jr $ra
+checkBad:
+
+  la $t0, pickBad
+  lw $t1, 8($t0)
+  beq $t1, $0, returnCheckOther
+  sw $0, 8($t0)
+
+  li $a1, 31
+  li $v0, 42
+  syscall
+  li $t1, 128     # constant to calculate rone number
+  
+  
+  mult $t1, $a0     # calculate row
+  mflo $t1
+  addi $t1, $t1, 12
+  addi $t1, $t1, BASE_ADDRESS
+  sw $t1, 0($t0)
+  # Replace all shields with block
+  la $t0, player
+  li $t2, black
+  sw $t2, 4($t0)
+  sw $t2, 8($t0)
+  sw $t2, 12($t0)
+  sw $t2, 28($t0)
+  sw $t2, 32($t0)
+
+  returnCheckOther:
+  jr $ra
