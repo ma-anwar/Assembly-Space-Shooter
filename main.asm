@@ -1,7 +1,7 @@
 ########################################
 # CSCB58 Winter 2021 Final Project
 # University of Toronto, Scarborough
-# Student: Mohammad Anwar, Student Number: 1001652446, UTorID: anwarmo4
+# Student: Mohammad Anwar
 ##Bitmap Display Configuration:
 # -Unit width in pixels: 8
 # -Unit height in pixels: 8
